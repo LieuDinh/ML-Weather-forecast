@@ -1,0 +1,40 @@
+﻿province,region,province_encoded,region_encoded
+Cam Pha,Bac Bo,5,0
+Ha Noi,Bac Bo,10,0
+Hai Duong,Bac Bo,11,0
+Hai Phong,Bac Bo,12,0
+Hoa Binh,Bac Bo,14,0
+Hong Gai,Bac Bo,15,0
+Nam Dinh,Bac Bo,19,0
+Thai Nguyen,Bac Bo,29,0
+Uong Bi,Bac Bo,33,0
+Viet Tri,Bac Bo,34,0
+Yen Bai,Bac Bo,38,0
+Bac Lieu,Nam Bo,0,1
+Ben Tre,Nam Bo,1,1
+Bien Hoa,Nam Bo,2,1
+Ca Mau,Nam Bo,4,1
+Can Tho,Nam Bo,7,1
+Chau Doc,Nam Bo,8,1
+Ho Chi Minh City,Nam Bo,13,1
+Long Xuyen,Nam Bo,17,1
+My Tho,Nam Bo,18,1
+Rach Gia,Nam Bo,25,1
+Soc Trang,Nam Bo,26,1
+Tan An,Nam Bo,28,1
+Tra Vinh,Nam Bo,31,1
+Vinh Long,Nam Bo,36,1
+Vung Tau,Nam Bo,37,1
+Buon Me Thuot,Tay Nguyen,3,2
+Da Lat,Tay Nguyen,9,2
+Play Cu,Tay Nguyen,23,2
+Cam Ranh,Trung Bo,6,3
+Hue,Trung Bo,16,3
+Nha Trang,Trung Bo,20,3
+Phan Rang,Trung Bo,21,3
+Phan Thiet,Trung Bo,22,3
+Qui Nhon,Trung Bo,24,3
+Tam Ky,Trung Bo,27,3
+Thanh Hoa,Trung Bo,30,3
+Tuy Hoa,Trung Bo,32,3
+Vinh,Trung Bo,35,3

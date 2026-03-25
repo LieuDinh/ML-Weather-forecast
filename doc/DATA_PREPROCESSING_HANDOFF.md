@@ -1,263 +1,250 @@
-# Data Preprocessing Handoff
+# Tài liệu Bàn giao Tiền xử lý Dữ liệu
+
+## Tổng quan
 
-## 1. Muc tieu
+Tài liệu này mô tả chi tiết quy trình tiền xử lý dữ liệu thời tiết, bao gồm: tải dữ liệu, làm sạch, biến đổi, xây dựng đặc trưng và phân chia tập huấn luyện/kiểm thử. Mục tiêu là tạo ra các bộ dữ liệu sạch, có cấu trúc và được chuẩn hóa, sẵn sàng cho các mô hình học máy (XGBoost, LSTM, Prophet, v.v.).
 
-Tai lieu nay mo ta toan bo quy trinh overview, clean data va transform data da duoc thuc hien cho bo du lieu `weather.csv`. Muc tieu cua phase nay la:
+---
 
-- Lam ro chat luong du lieu goc truoc khi model hoa.
-- Lam sach du lieu theo dung dac thu chuoi thoi gian da bien, da dia phuong.
-- Chuan bi du lieu o dang san sang cho cac nhom phat trien model Random Forest, XGBoost, Prophet va LSTM.
+## 1. Tải dữ liệu
 
-## 2. Tong quan du lieu dau vao
+**Đường dẫn tệp:** `dataset/init/weather.csv`
 
-- Nguon du lieu: `weather.csv`
-- So dong, so cot ban dau: `181,960 x 10`
-- Don vi thoi gian: theo ngay
-- Pham vi thoi gian: 2009 den 2021
-- Doi tuong quan sat: nhieu tinh/thanh pho tai Viet Nam
+**Các cột (dữ liệu thô):**
+| Cột | Mô tả | Kiểu dữ liệu |
+|-----|-------|--------------|
+| province | Tên tỉnh/thành phố | object |
+| max | Nhiệt độ tối đa hàng ngày (°C) | int64 |
+| min | Nhiệt độ tối thiểu hàng ngày (°C) | int64 |
+| wind | Tốc độ gió (km/h) | int64 |
+| wind_d | Hướng gió | object |
+| rain | Lượng mưa (mm) | float64 |
+| humidi | Độ ẩm (%) | int64 |
+| cloud | Độ che phủ mây (%) | int64 |
+| pressure | Áp suất không khí (hPa) | int64 |
+| date | Ngày (yyyy-mm-dd) | object |
+
+**Kích thước ban đầu:** `(181.960, 10)`
+
+**Nhận xét:** Dữ liệu ban đầu không có giá trị thiếu, nhưng tồn tại các dòng trùng lặp và tên tỉnh không đồng nhất.
+
+---
 
-### Cac cot du lieu
+## 2. Làm sạch dữ liệu
 
-1. `province`: Tinh/thanh pho ghi nhan du lieu
-2. `max`: Nhiet do cao nhat ngay
-3. `min`: Nhiet do thap nhat ngay
-4. `wind`: Toc do gio
-5. `wind_d`: Huong gio
-6. `rain`: Luong mua
-7. `humidi`: Do am
-8. `cloud`: Do che phu may
-9. `pressure`: Ap suat khong khi, gia tri quan sat cho thay nhieu kha nang dang o don vi `hPa/mbar`, khong phai `bar`
-10. `date`: Ngay ghi nhan
+### 2.1 Chuẩn hóa tên tỉnh
+- **Hành động:** Thay `'Hanoi'` thành `'Ha Noi'` để đồng nhất tên.
+- **Kết quả:** Số tỉnh duy nhất giảm từ 40 xuống 39.
+- **Lý do:** Đảm bảo nhóm dữ liệu nhất quán khi phân tích không gian.
 
-## 3. Ket qua overview
+### 2.2 Chuyển đổi cột ngày và đặt chỉ mục
+- Chuyển cột `date` sang định dạng datetime.
+- Đặt `date` làm chỉ mục của DataFrame.
+- Kiểm tra khoảng thời gian: `2009-01-01` đến `2021-06-18`.
 
-Qua trinh overview xac nhan cac diem chinh sau:
+### 2.3 Xử lý ngày thiếu (Nội suy)
 
-- Khong co dong duplicate hoan toan trong du lieu goc.
-- Khong co duplicate theo khoa `province-date` truoc khi chuan hoa ten dia phuong.
-- Co tinh trang trung ten dia phuong do khac cach viet: `Hanoi` va `Ha Noi`.
-- Co `40` nhan dia phuong bi thieu ngay, tong cong `120` ngay bi khuyet trong chuoi thoi gian.
+**Vấn đề:** Một số tỉnh có ngày thiếu (mỗi tỉnh thiếu 3 ngày, 40 tỉnh bị ảnh hưởng → tổng 120 ngày thiếu).
 
-### Nhan xet
+**Xử lý theo từng tỉnh:**
+1. **Sắp xếp** dữ liệu theo ngày.
+2. **Loại bỏ các ngày trùng lặp** (nếu có) bằng cách tổng hợp:
+   - Cột số: lấy giá trị trung bình
+   - Cột phân loại: lấy giá trị đầu tiên
+3. **Đánh lại chỉ mục** để có đầy đủ các ngày từ min đến max (theo tần suất ngày).
+4. **Điền giá trị thiếu:**
+   - Cột số (`max`, `min`, `wind`, `rain`, `humidi`, `cloud`, `pressure`): nội suy tuyến tính theo thời gian (`method='time'`).
+   - Hướng gió (`wind_d`): điền tiếp về phía trước, sau đó điền ngược.
+5. **Chuyển giá trị nội suy về số nguyên** đối với các cột vốn là số nguyên.
 
-- Voi bai toan time series, viec kiem tra tinh lien tuc cua truc ngay quan trong hon viec chi dem `null` va `duplicate` toan bang.
-- Rủi ro lon nhat cua bo du lieu nay khong nam o duplicate dong, ma nam o ten dia phuong khong dong nhat va chuoi ngay bi dut quang.
+**Kết quả:**
+- Không còn giá trị thiếu.
+- Kích thước cuối cùng: `(177.528, 9)` sau khi thêm các ngày thiếu.
 
-## 4. Quy trinh clean data
+### 2.4 Đổi tên cột
+- `max` → `max_temp`
+- `min` → `min_temp`
+- **Lý do:** Dễ hiểu và nhất quán.
 
-### 4.1. Chuan hoa ten dia phuong
+### 2.5 Xây dựng đặc trưng: Chênh lệch nhiệt độ
+- Thêm cột `temp_diff = max_temp - min_temp`
+- Dùng để ghi nhận biến động nhiệt độ hàng ngày.
 
-Da thay `Hanoi` bang `Ha Noi` de thong nhat nhan dia phuong.
+### 2.6 Phát hiện ngoại lệ (Phương pháp IQR)
 
-#### Y nghia
+| Cột | Số lượng ngoại lệ | Tỷ lệ |
+|-----|-------------------|-------|
+| max_temp | 8.087 | 4,56% |
+| min_temp | 9.751 | 5,49% |
+| temp_diff | 5.633 | 3,17% |
+| wind | 4.218 | 2,38% |
+| rain | 16.638 | 9,37% |
+| humidi | 2.214 | 1,25% |
+| cloud | 0 | 0,00% |
+| pressure | 13.541 | 7,63% |
 
-- Neu khong chuan hoa, model co the xem day la hai dia phuong khac nhau.
-- Sau khi gop ten, phat sinh `4,549` truong hop duplicate theo khoa `province-date` do hai nhan cu thuc chat cung chi mot dia phuong.
+**Quyết định:** **Giữ nguyên tất cả các giá trị ngoại lệ.**  
+**Lý do:** Các ngoại lệ phản ánh các sự kiện thời tiết cực đoan thực tế (bão, mưa lớn). Việc loại bỏ chúng sẽ làm mất đi tín hiệu mà các mô hình cần để dự đoán các điều kiện khắc nghiệt. Việc chuẩn hóa (MinMaxScaler) sau đó sẽ thu nhỏ các giá trị về khoảng [0,1] mà không làm mất chúng.
 
-### 4.2. Chuyen `date` sang datetime va dat lam index
+### 2.7 Kiểm tra hợp lệ dữ liệu (Quy tắc nghiệp vụ)
 
-Buoc nay duoc thuc hien de:
+**Các quy tắc được kiểm tra:**
+- Nhiệt độ tối đa: `-10 ≤ max_temp ≤ 50`
+- Nhiệt độ tối thiểu: `-10 ≤ min_temp ≤ 50`
+- Chênh lệch nhiệt độ: `≥ 0`
+- Độ ẩm: `0 ≤ humidi ≤ 100`
+- Độ che phủ mây: `0 ≤ cloud ≤ 100`
+- Lượng mưa: `≥ 0`
+- Áp suất: `> 900`
 
-- Kiem tra tinh lien tuc cua chuoi thoi gian.
-- Ho tro noi suy theo truc thoi gian.
-- Tach train/test theo thu tu thoi gian, tranh data leakage.
+**Kết quả:** Tất cả dữ liệu đều thỏa mãn. Không có giá trị nằm ngoài khoảng cho phép.
 
-### 4.3. Kiem tra va bo sung ngay bi thieu
+---
 
-Du lieu duoc xu ly theo tung `province` rieng biet:
+## 3. Biến đổi dữ liệu
 
-- Sap xep theo thoi gian.
-- Tao day ngay day du tu ngay nho nhat den ngay lon nhat cua tung dia phuong.
-- Reindex de bo sung cac ngay con thieu.
+### 3.1 Trích xuất đặc trưng thời gian
+- Thêm các cột `day`, `month`, `year` từ chỉ mục `date`.
+- **Mục đích:** Ghi nhận tính mùa vụ và chu kỳ cho các mô hình chuỗi thời gian.
 
-### 4.4. Imputation
+### 3.2 Phân nhóm vùng khí hậu
 
-Chien luoc da ap dung:
+**Bảng ánh xạ:**
+| Vùng | Các tỉnh |
+|------|----------|
+| Bắc Bộ | Hoa Binh, Hong Gai, Thai Nguyen, Cam Pha, Nam Dinh, Uong Bi, Viet Tri, Ha Noi, Hai Duong, Yen Bai, Hai Phong |
+| Trung Bộ | Tam Ky, Hue, Thanh Hoa, Tuy Hoa, Cam Ranh, Nha Trang, Phan Rang, Vinh, Phan Thiet, Qui Nhon |
+| Tây Nguyên | Buon Me Thuot, Da Lat, Play Cu |
+| Nam Bộ | Bac Lieu, Ho Chi Minh City, Ben Tre, Tan An, Bien Hoa, Ca Mau, Long Xuyen, Tra Vinh, My Tho, Can Tho, Chau Doc, Vinh Long, Vung Tau, Rach Gia, Soc Trang |
 
-- Cot so (`max`, `min`, `wind`, `rain`, `humidi`, `cloud`, `pressure`): noi suy theo thoi gian.
-- Cot `wind_d`: dung `ffill()` va `bfill()`.
-- Neu mot dia phuong co duplicate index sau khi gop ten: group theo ngay va lay trung binh cho cot so, lay gia tri dau cho cot text.
+**Quy trình:**
+1. Tạo ánh xạ ngược `tỉnh → vùng`.
+2. Thêm cột `region`.
+3. Mã hóa nhãn `region` → `region_encoded` (0, 1, 2, 3).
 
-#### Y nghia
+### 3.3 Mã hóa tỉnh
+- Mã hóa nhãn `province` → `province_encoded`.
+- Xuất tệp ánh xạ: `dataset/province_region_code_mapping.csv` (chứa tên tỉnh, vùng và mã số tương ứng).
 
-- Noi suy theo tung dia phuong la hop ly vi tranh tron tin hieu khi hau giua cac vung.
-- Noi suy theo thoi gian phu hop voi khoang thieu ngan va giup giu chuoi lien tuc cho model.
+### 3.4 Mã hóa hướng gió
+- Mã hóa nhãn `wind_d` → `wind_d_encoded`.
 
-#### Luu y
+### 3.5 Tập dữ liệu sạch cuối cùng
 
-- Khong nen xem imputation la tai tao su that cho cac dot thoi tiet cuc doan keo dai.
-- Cach nay phu hop cho lam sach va tao bo du lieu baseline, nhung neu sau nay phat hien khoang thieu dai, nhom modeling nen xem xet mot chien luoc dac thu hon.
+**Các cột sau khi biến đổi (14 cột):**
+- Số: `max_temp`, `min_temp`, `wind`, `rain`, `humidi`, `cloud`, `pressure`, `temp_diff`, `day`, `month`, `year`
+- Phân loại đã mã hóa: `region_encoded`, `province_encoded`, `wind_d_encoded`
 
-### 4.5. Kiem dinh gia tri bat thuong
+**Các cột đã loại bỏ:** `province` (văn bản), `wind_d` (văn bản), `region` (văn bản)
 
-Da kiem tra ca bang thong ke, histogram, boxplot, IQR va business rules.
+---
 
-Ket qua sau lam sach:
+## 4. Phân chia tập huấn luyện / kiểm thử (theo thời gian)
 
-- `missing_values_after_cleaning = 0`
-- `duplicate_province_date_after_cleaning = 0`
-- Khong co gia tri ngoai mien hop ly voi:
-  - nhiet do trong `[-10, 50]`
-  - `humidi` trong `[0, 100]`
-  - `cloud` trong `[0, 100]`
-  - `rain >= 0`
-  - `pressure > 900`
+**Mốc phân chia:** `2021-01-01`
 
-#### Nhan xet
+| Tập dữ liệu | Khoảng thời gian | Số dòng |
+|-------------|------------------|---------|
+| Huấn luyện | 2009-01-01 đến 2020-12-31 | 170.937 |
+| Kiểm thử | 2021-01-01 đến 2021-06-18 | 6.591 |
 
-- Khong nen loai outlier chi vi hiem. Trong bai toan canh bao thoi tiet, gia tri cuc doan co the la tin hieu quan trong can du doan.
-- Buoc nay nen duoc hieu la xac minh tinh hop le cua du lieu, khong phai loai toan bo gia tri hiem.
+**Lưu ý:** Phân chia được thực hiện trước khi chuẩn hóa để tránh rò rỉ dữ liệu.
 
-## 5. Quy trinh transform data
+---
 
-### 5.1. Tao dac trung thoi gian
+## 5. Chuẩn hóa (MinMaxScaler)
 
-Da tao cac cot:
+**Các cột được chuẩn hóa:**
+- `max_temp`, `min_temp`, `temp_diff`, `wind`, `rain`, `humidi`, `cloud`, `pressure`, `day`, `month`, `year`
 
-- `day`
-- `month`
-- `year`
+**Quy trình:**
+1. Khớp bộ chuẩn hóa **chỉ trên tập huấn luyện**.
+2. Chuyển đổi cả tập huấn luyện và kiểm thử.
+3. Khoảng giá trị sau chuẩn hóa: `[0, 1]` cho tất cả các cột được chọn.
 
-#### Y nghia
+**Lý do:** Dữ liệu chuẩn hóa phù hợp với LSTM và các mô hình dựa trên gradient; các mô hình dạng cây (XGBoost, Random Forest) vẫn có thể dùng dữ liệu gốc.
 
-- Ho tro model hoc tinh mua vu va tinh chu ky theo lich.
-- Co ich cho ca model tree-based lan neural network.
+---
 
-### 5.2. Nhom dia phuong theo vung khi hau
+## 6. Các tệp dữ liệu xuất ra
 
-Da map cac tinh/thanh vao 4 vung lon:
+### Không chuẩn hóa (dành cho XGBoost, Random Forest)
+- `dataset/test_train/weather_train_2009_2020.csv`
+- `dataset/test_train/weather_test_2021.csv`
 
-- `Bac Bo`
-- `Trung Bo`
-- `Tay Nguyen`
-- `Nam Bo`
+### Đã chuẩn hóa (dành cho LSTM, deep learning)
+- `dataset/test_train_scaled/weather_train_2009_2020_scaled.csv`
+- `dataset/test_train_scaled/weather_test_2021_scaled.csv`
 
-Sau do ma hoa thanh `region_encoded`.
+**Sắp xếp:** Tất cả các tệp xuất ra được sắp xếp theo `province_encoded` (tăng dần) sau đó đến `date` (tăng dần) để giữ chuỗi thời gian của từng tỉnh liên tục.
 
-#### Y nghia
+---
 
-- Bo sung thong tin khi hau vi mo ma chi ten tinh don le khong the hien ro.
+## 7. Kiểm tra đảm bảo chất lượng (QA)
 
-### 5.3. Ma hoa bien phan loai
+| Kiểm tra | Kết quả |
+|----------|---------|
+| Kích thước dữ liệu thô | (181.960, 10) |
+| Kích thước dữ liệu sạch | (177.528, 17) |
+| Kích thước dữ liệu đã biến đổi | (177.528, 14) |
+| Kích thước tập huấn luyện | (170.937, 14) |
+| Kích thước tập kiểm thử | (6.591, 14) |
+| Số dòng trùng lặp chính xác trong dữ liệu thô | 0 |
+| Số dòng trùng lặp (tỉnh, ngày) trong dữ liệu thô | 0 |
+| Số dòng trùng lặp (tỉnh, ngày) sau khi hợp nhất tên | 4.549 (do xung đột Hanoi/Ha Noi) |
+| Số tỉnh có ngày thiếu trước khi nội suy | 40 |
+| Tổng số ngày thiếu trước khi nội suy | 120 |
+| Số tỉnh duy nhất sau khi làm sạch | 39 |
+| Số dòng trùng lặp (tỉnh, ngày) sau khi làm sạch | 0 |
+| Giá trị thiếu sau khi làm sạch | 0 |
+| Giá trị thiếu cột vùng sau khi ánh xạ | 0 |
+| Còn cột tỉnh (văn bản) trong bảng mô hình | Không |
+| Cột chênh lệch nhiệt độ tồn tại | Có |
+| Nhiệt độ tối đa ngoài [-10, 50] | 0 |
+| Nhiệt độ tối thiểu ngoài [-10, 50] | 0 |
+| Chênh lệch nhiệt độ âm | 0 |
+| Độ ẩm ngoài [0, 100] | 0 |
+| Độ che phủ mây ngoài [0, 100] | 0 |
+| Lượng mưa âm | 0 |
+| Áp suất ≤ 900 | 0 |
 
-Da ma hoa:
+---
 
-- `wind_d` thanh `wind_d_encoded`
-- `region` thanh `region_encoded`
-- `province` thanh `province_encoded`
+## 8. Ghi chú cho quá trình phát triển mô hình
 
-#### Y nghia
+### Đối với LSTM (và các mô hình chuỗi khác)
+- Sử dụng **dữ liệu đã chuẩn hóa**.
+- Đảm bảo thứ tự thời gian được giữ nguyên (đã sắp xếp theo `province_encoded` và `date`).
+- Xem xét việc định dạng lại dữ liệu thành các chuỗi theo từng tỉnh để đưa vào LSTM.
 
-- Tao bang du lieu co the dua vao pipeline machine learning ma khong con phu thuoc cot text.
-- `province_encoded` giup nhom sau loc du lieu theo dia phuong va mo hinh hoa ma khong phai xu ly lai tu dau.
+### Đối với XGBoost / Random Forest
+- Sử dụng **dữ liệu chưa chuẩn hóa**; các mô hình này không bị ảnh hưởng bởi tỷ lệ.
+- Đưa `province_encoded`, `region_encoded`, `wind_d_encoded` vào như các đặc trưng phân loại.
+- `day`, `month`, `year` có thể được dùng như các đặc trưng số.
 
-#### Luu y
+### Đối với Prophet
+- Người xây dựng mô hình nên tạo các bảng riêng cho từng tỉnh với:
+  - `ds`: cột ngày
+  - `y`: biến mục tiêu (ví dụ: max_temp, min_temp, rain)
+  - Các biến ngoại sinh bổ sung nếu cần.
 
-- Label encoding la cach chuan bi hop ly cho baseline.
-- Tuy nhien, day la bien phan loai khong co thu tu. Neu nhom modeling can toi uu Random Forest, XGBoost hoac LSTM, co the xem xet them one-hot encoding hoac embedding cho `province` va `wind_d`.
+### Xử lý ngoại lệ
+- Tất cả các ngoại lệ được giữ nguyên. Nếu mô hình nhạy cảm với các giá trị cực trị, có thể cân nhắc sử dụng chuẩn hóa vững (robust scaling) hoặc cắt bớt trong khi xây dựng mô hình, nhưng cần đánh giá tác động đến khả năng dự đoán các sự kiện cực đoan.
 
-### 5.4. Loai bo cot text khoi bang modeling
+---
 
-Bang `weather_transformed` sau cung da loai cac cot text:
+## 9. Tóm tắt các tệp đầu ra
 
-- `province`
-- `wind_d`
-- `region`
+| Đường dẫn tệp | Mô tả |
+|---------------|-------|
+| `dataset/province_region_code_mapping.csv` | Ánh xạ giữa tên tỉnh, vùng miền và mã số mã hóa |
+| `dataset/test_train/weather_train_2009_2020.csv` | Dữ liệu huấn luyện chưa chuẩn hóa |
+| `dataset/test_train/weather_test_2021.csv` | Dữ liệu kiểm thử chưa chuẩn hóa |
+| `dataset/test_train_scaled/weather_train_2009_2020_scaled.csv` | Dữ liệu huấn luyện đã chuẩn hóa |
+| `dataset/test_train_scaled/weather_test_2021_scaled.csv` | Dữ liệu kiểm thử đã chuẩn hóa |
 
-So chieu bang modeling sau transform: `177,528 x 13`
+---
 
-### 5.5. Tach train/test theo thoi gian
-
-Da tach du lieu theo moc:
-
-- Train: den het `2020-12-31`
-- Test: tu `2021-01-01`
-
-Kich thuoc:
-
-- Train: `170,937 x 13`
-- Test: `6,591 x 13`
-
-#### Y nghia
-
-- Day la cach tach dung voi bai toan time series, giu nguyen thu tu thoi gian va tranh leakage.
-
-### 5.6. Chuan hoa numeric features
-
-Da thuc hien `MinMaxScaler` tren cac cot so:
-
-- `max_tempeture`
-- `min_tempeture`
-- `wind`
-- `rain`
-- `humidi`
-- `cloud`
-- `pressure`
-- `day`
-- `month`
-- `year`
-
-Nguyen tac ap dung:
-
-- `fit` tren tap train
-- `transform` tap train va test bang cung scaler
-
-#### Y nghia
-
-- Dung voi quy tac machine learning de tranh leakage.
-- Huu ich dac biet cho LSTM va cac mo hinh nhay voi thang do.
-- Random Forest va XGBoost co the dung ca ban scaled hoac unscaled.
-
-## 6. Dau ra da san sang cho nhom model
-
-Da export 4 file:
-
-- `weather_train_2009_2020.csv`: train set da clean/transform, chua scale
-- `weather_test_2021.csv`: test set da clean/transform, chua scale
-- `weather_train_2009_2020_scaled.csv`: train set da scale
-- `weather_test_2021_scaled.csv`: test set da scale
-
-## 7. Danh gia tong the quy trinh hien tai
-
-### Nhung gi da hop ly
-
-- Cac buoc overview, clean data va transform data di dung huong cho bai toan time series weather forecasting.
-- Kiem tra tinh lien tuc theo ngay duoc dat dung trong tam.
-- Imputation theo tung dia phuong la lua chon hop ly.
-- Tach train/test theo thoi gian la dung.
-- Da bo sung normalization theo cach khong gay leakage.
-
-### Nhung diem can nhom tiep theo luu y
-
-- Prophet khong dung truc tiep bang hien tai; can tao bang rieng voi cau truc `ds`, `y` cho tung muc tieu du bao.
-- Neu nhom muon toi uu model hon baseline, nen xem xet one-hot encoding hoac embedding cho bien phan loai.
-- Can xac nhan lai y nghia nghiep vu cua cac target cu the, vi `temperature`, `rain`, `wind` co the can du bao rieng thanh ba bai toan khac nhau.
-
-## 8. Goi y cho phase modeling
-
-### Random Forest, XGBoost
-
-- Co the bat dau tu bo `unscaled`.
-- Dung `scaled` neu nhom muon giu mot pipeline dong nhat giua nhieu model.
-
-### LSTM
-
-- Nen uu tien bo `scaled`.
-- Can thiet ke lai input thanh cua so thoi gian theo tung dia phuong hoac tung target.
-
-### Prophet
-
-- Nen tach rieng theo tung target va theo tung dia phuong hoac tung cum dia phuong.
-- Can chuyen ten cot thanh `ds` va `y`, sau do bo sung regressors neu can.
-
-## 9. Ket luan
-
-Phase cleaning va standardization hien tai da dat muc tieu cua mot quy trinh DA co the ban giao cho nhom model:
-
-- Du lieu da duoc lam sach theo logic thoi gian.
-- Da bo sung va noi suy cac ngay thieu mot cach co kiem soat.
-- Da ma hoa du lieu phan loai can thiet.
-- Da tach train/test dung quy tac time series.
-- Da bo sung phien ban chuan hoa cho cac model can scale.
-
-Nhom tiep theo co the su dung truc tiep cac file output de xay dung pipeline du bao cho nhiet do, luong mua va canh bao gio manh.
+**Thời gian hoàn thành tiền xử lý:** 2026-03-25  
+**Nguồn dữ liệu:** `dataset/init/weather.csv`  
+**Dữ liệu sẵn sàng cho:** Phát triển và đánh giá mô hình

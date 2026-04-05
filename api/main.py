@@ -4,6 +4,7 @@ from datetime import date
 from functools import lru_cache 
  
 from fastapi import Depends, FastAPI, HTTPException, Query, status 
+from fastapi.middleware.cors import CORSMiddleware  # CẬP NHẬT 1: Import thư viện CORS
  
 from api.schemas import ( 
     HealthData, 
@@ -33,6 +34,19 @@ app = FastAPI(
     contact={"name": "Weather Forecast Team"}, 
 ) 
  
+# ==========================================
+# CẬP NHẬT 2: THÊM CẤU HÌNH CORS MIDDLEWARE
+# ==========================================
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Cho phép gọi từ mọi domain (Dùng khi dev). 
+                          # Khi deploy thực tế, nên đổi thành domain cụ thể, vd: ["http://localhost:5173", "https://your-frontend-domain.com"]
+    allow_credentials=True,
+    allow_methods=["*"],  # Cho phép mọi phương thức (GET, POST, PUT, DELETE, OPTIONS, v.v.)
+    allow_headers=["*"],  # Cho phép mọi headers
+)
+# ==========================================
+
  
 @lru_cache(maxsize=1) 
 def get_store() -> WeatherPredictionStore: 
@@ -150,4 +164,4 @@ def get_all_predictions(
 if __name__ == "__main__": 
     import uvicorn 
  
-    uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=False) 
+    uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=False)

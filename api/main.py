@@ -10,6 +10,7 @@ from api.schemas import (
     HealthData, 
     HealthResponse, 
     PaginatedPredictionResponse, 
+    PredictionListResponse,
     PredictionCompareRecord, 
     PredictionCompareResponse, 
     PredictionPage, 
@@ -106,6 +107,36 @@ def get_prediction_by_date_and_province(
         success=True, 
         message="Prediction found.", 
         data=PredictionRecord(**record), 
+    ) 
+ 
+ 
+@app.get( 
+    "/predictions/by-province-month", 
+    response_model=PredictionListResponse, 
+    tags=["Weather Predictions"], 
+    summary="Get predictions by province code and month", 
+    description=( 
+        "Return prediction records for a province and month. " 
+        "If year is supplied, the result is limited to that year; otherwise all available years for that month are returned." 
+    ), 
+) 
+def get_predictions_by_province_month( 
+    province_code: int = Query(..., ge=0, description="Province code from the repository mapping."), 
+    month: int = Query(..., ge=1, le=12, description="Month number from 1 to 12."), 
+    year: int | None = Query(None, ge=1900, le=2100, description="Optional year filter."), 
+    store: WeatherPredictionStore = Depends(store_dependency), 
+) -> PredictionListResponse: 
+    records = store.list_by_province_and_month(province_code=province_code, month=month, year=year) 
+    if not records: 
+        year_clause = f" for year={year}" if year is not None else "" 
+        raise HTTPException( 
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail=f"No predictions found for province_code={province_code}, month={month}{year_clause}", 
+        ) 
+    return PredictionListResponse( 
+        success=True, 
+        message="Predictions returned.", 
+        data=[PredictionRecord(**record) for record in records], 
     ) 
  
  

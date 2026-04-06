@@ -136,6 +136,21 @@ class WeatherPredictionStore:
         record["absolute_error_mm"] = float(abs(error_mm)) 
         return record 
  
+    def list_by_province_and_month( 
+        self, 
+        province_code: int, 
+        month: int, 
+        year: Optional[int] = None, 
+    ) -> list[Dict[str, Any]]: 
+        frame = self.frame[ 
+            (self.frame["province_code"] == province_code) 
+            & (self.frame["date"].dt.month == month) 
+        ] 
+        if year is not None: 
+            frame = frame[frame["date"].dt.year == year] 
+ 
+        return [self._row_to_record(row) for _, row in frame.iterrows()] 
+ 
     def list_records( 
         self, 
         page: int, 

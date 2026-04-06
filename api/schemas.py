@@ -56,5 +56,11 @@ class PredictionCompareResponse(ApiResponse):
     data: PredictionCompareRecord 
  
  
+class PredictionListResponse(ApiResponse):
+    data: List[PredictionRecord] 
+ 
+ 
 class PaginatedPredictionResponse(ApiResponse): 
     data: PredictionPage 
+ 
+ 

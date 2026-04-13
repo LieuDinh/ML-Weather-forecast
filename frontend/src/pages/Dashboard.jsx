@@ -51,8 +51,8 @@ const Dashboard = () => {
           <div className="flex items-center gap-3 mb-2">
             <span className="bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold tracking-widest uppercase shadow-lg shadow-emerald-500/30">Winner Model</span>
           </div>
-          <h2 className="text-3xl font-black mt-2">Mô hình XGBoost (Pipeline V4)</h2>
-          <p className="text-slate-300 font-medium mt-2 text-lg">Độ chính xác R²: <span className="text-emerald-400 font-bold">0.8111</span> | Sai số trung bình (MAE): <span className="text-emerald-400 font-bold">1.94 mm</span></p>
+          <h2 className="text-3xl font-black mt-2">Mô hình XGBoost</h2>
+          <p className="text-slate-300 font-medium mt-2 text-lg">Độ chính xác R²: <span className="text-emerald-400 font-bold">0.4766</span> | Sai số trung bình (MAE): <span className="text-emerald-400 font-bold">1.94 mm</span></p>
         </div>
       </div>
 

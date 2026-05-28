@@ -9,8 +9,8 @@ from typing import Any, Dict, Optional
 import pandas as pd 
  
  
-DEFAULT_SOURCE_PATH = Path("output/20260403_084235/predictions_all_models_2021.csv") 
-DEFAULT_XGBOOST_ONLY_PATH = Path("output/20260403_084235/predictions_xgboost_2021.csv") 
+DEFAULT_SOURCE_PATH = Path("output/predictions_all_models_2021.csv") 
+DEFAULT_XGBOOST_ONLY_PATH = Path("output/predictions_xgboost_2021.csv") 
 DEFAULT_MAPPING_PATH = Path("dataset/province_region_code_mapping.csv") 
 DEFAULT_GROUND_TRUTH_PATH = Path("input/weather_test_2021.csv") 
  

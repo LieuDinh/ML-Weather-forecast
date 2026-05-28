@@ -22,7 +22,7 @@ export default function App() {
         <aside className="w-64 bg-slate-900 text-white p-6 flex flex-col gap-8 shadow-2xl z-10">
           <div className="border-b border-slate-700 pb-6">
             <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 tracking-tighter italic">WeatherML</h1>
-            <p className="text-xs text-slate-400 mt-1 font-mono">Pipeline v4 - XGBoost</p>
+            <p className="text-xs text-slate-400 mt-1 font-mono">Pipeline - XGBoost</p>
           </div>
           <nav className="flex flex-col gap-2">
             <NavLink to="/" icon={<LayoutDashboard size={20}/>} label="Dashboard" />

@@ -1,7 +1,6 @@
 from __future__ import annotations 
  
 import time 
-from datetime import datetime 
 from pathlib import Path 
  
 import matplotlib 
@@ -406,9 +405,8 @@ def save_feature_importance_chart(
  
  
 def main(): 
-    run_ts = datetime.now().strftime("%Y%m%d_%H%M%S") 
     input_dir = Path("input") 
-    output_dir = Path("output") / f"{run_ts}" 
+    output_dir = Path("output") 
  
     cfg = p3.PipelineConfig() 
     t_start = time.time() 
